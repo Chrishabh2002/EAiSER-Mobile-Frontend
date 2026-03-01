@@ -1,8 +1,10 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/services/api';
+
+// We'll use a simple check at runtime instead of dynamic imports
+const isWeb = Platform.OS === 'web';
 
 interface User {
   id: string;
@@ -27,22 +29,44 @@ const USER_KEY = 'user_data';
 // Helper to get storage (SecureStore for native, AsyncStorage for web)
 const storage = {
   getItem: async (key: string): Promise<string | null> => {
-    if (Platform.OS === 'web') {
+    if (isWeb) {
+      try {
+        return await AsyncStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    }
+    try {
+      const SecureStore = require('expo-secure-store');
+      return await SecureStore.getItemAsync(key);
+    } catch {
+      // Fallback to AsyncStorage on error
       return AsyncStorage.getItem(key);
     }
-    return SecureStore.getItemAsync(key);
   },
   setItem: async (key: string, value: string): Promise<void> => {
-    if (Platform.OS === 'web') {
+    if (isWeb) {
       return AsyncStorage.setItem(key, value);
     }
-    return SecureStore.setItemAsync(key, value);
+    try {
+      const SecureStore = require('expo-secure-store');
+      await SecureStore.setItemAsync(key, value);
+    } catch {
+      // Fallback to AsyncStorage on error
+      return AsyncStorage.setItem(key, value);
+    }
   },
   deleteItem: async (key: string): Promise<void> => {
-    if (Platform.OS === 'web') {
+    if (isWeb) {
       return AsyncStorage.removeItem(key);
     }
-    return SecureStore.deleteItemAsync(key);
+    try {
+      const SecureStore = require('expo-secure-store');
+      await SecureStore.deleteItemAsync(key);
+    } catch {
+      // Fallback to AsyncStorage on error
+      return AsyncStorage.removeItem(key);
+    }
   },
 };
 
