@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/services/api';
 
 interface User {
@@ -22,6 +24,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'user_data';
 
+// Helper to get storage (SecureStore for native, AsyncStorage for web)
+const storage = {
+  getItem: async (key: string): Promise<string | null> => {
+    if (Platform.OS === 'web') {
+      return AsyncStorage.getItem(key);
+    }
+    return SecureStore.getItemAsync(key);
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      return AsyncStorage.setItem(key, value);
+    }
+    return SecureStore.setItemAsync(key, value);
+  },
+  deleteItem: async (key: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      return AsyncStorage.removeItem(key);
+    }
+    return SecureStore.deleteItemAsync(key);
+  },
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,8 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadUser = async () => {
     try {
-      const token = await SecureStore.getItemAsync(TOKEN_KEY);
-      const userData = await SecureStore.getItemAsync(USER_KEY);
+      const token = await storage.getItem(TOKEN_KEY);
+      const userData = await storage.getItem(USER_KEY);
       
       if (token && userData) {
         setUser(JSON.parse(userData));
@@ -61,8 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: email,
       };
 
-      await SecureStore.setItemAsync(TOKEN_KEY, mockToken);
-      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(mockUser));
+      await storage.setItem(TOKEN_KEY, mockToken);
+      await storage.setItem(USER_KEY, JSON.stringify(mockUser));
 
       api.defaults.headers.common['Authorization'] = `Bearer ${mockToken}`;
       setUser(mockUser);
@@ -86,8 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: email,
       };
 
-      await SecureStore.setItemAsync(TOKEN_KEY, mockToken);
-      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(mockUser));
+      await storage.setItem(TOKEN_KEY, mockToken);
+      await storage.setItem(USER_KEY, JSON.stringify(mockUser));
 
       api.defaults.headers.common['Authorization'] = `Bearer ${mockToken}`;
       setUser(mockUser);
@@ -99,8 +123,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await SecureStore.deleteItemAsync(TOKEN_KEY);
-      await SecureStore.deleteItemAsync(USER_KEY);
+      await storage.deleteItem(TOKEN_KEY);
+      await storage.deleteItem(USER_KEY);
       delete api.defaults.headers.common['Authorization'];
       setUser(null);
     } catch (error) {

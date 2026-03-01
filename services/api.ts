@@ -1,7 +1,31 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.eaiser.com';
+
+// Helper to get storage (SecureStore for native, AsyncStorage for web)
+const storage = {
+  getItem: async (key: string): Promise<string | null> => {
+    if (Platform.OS === 'web') {
+      return AsyncStorage.getItem(key);
+    }
+    return SecureStore.getItemAsync(key);
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      return AsyncStorage.setItem(key, value);
+    }
+    return SecureStore.setItemAsync(key, value);
+  },
+  deleteItem: async (key: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      return AsyncStorage.removeItem(key);
+    }
+    return SecureStore.deleteItemAsync(key);
+  },
+};
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -16,7 +40,7 @@ export const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     try {
-      const token = await SecureStore.getItemAsync('auth_token');
+      const token = await storage.getItem('auth_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -41,8 +65,8 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       
       // Clear stored auth data
-      await SecureStore.deleteItemAsync('auth_token');
-      await SecureStore.deleteItemAsync('user_data');
+      await storage.deleteItem('auth_token');
+      await storage.deleteItem('user_data');
       
       // You can trigger a logout action here or redirect to login
       // This depends on your navigation setup
@@ -51,6 +75,8 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export { storage };
 
 // API helper functions
 export const apiService = {
