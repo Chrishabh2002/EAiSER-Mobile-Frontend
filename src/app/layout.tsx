@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Next.js Template",
-  description: "A minimal Next.js starter template",
+  title: "BuildFast - Launch Your Ideas Faster",
+  description: "A modern starter template to help you build amazing web applications faster with Next.js, React, and Tailwind CSS.",
+  keywords: ["Next.js", "React", "Tailwind CSS", "starter template", "web development"],
 };
 
 export default function RootLayout({
